@@ -1,9 +1,17 @@
+CREATE TABLE IF NOT EXISTS app_user (
+  user_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  full_name      TEXT NOT NULL,
+  email          TEXT NOT NULL UNIQUE,
+  password_hash  TEXT NOT NULL,
+  created_at     TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE parking_lot (
-  lot_id        BIGSERIAL PRIMARY KEY,
+  lot_id        INTEGER PRIMARY KEY AUTOINCREMENT,
   name          VARCHAR(120) NOT NULL,
   address       VARCHAR(255),
   city          VARCHAR(80),
-  created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+  created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE parking_zone (
