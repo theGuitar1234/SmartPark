@@ -110,40 +110,30 @@ def signup_view_content(page):
 
 def login_view_content(page):
     def form_submit_function(e):
-        name = first_name_field.value.strip()
         email = email_field.value.strip().lower()
         password = password_field.value
 
-        if not name or not email or not password:
+        if not email or not password:
             form_submitted.value = "Please fill in all fields."
             form_submitted.color = "red"
             page.update()
             return
 
         try:
-            db.create_user(name, email, password)
-            form_submitted.value = "Registration successful!"
-            form_submitted.color = "green"
-            page.update()
-            page.go("/success")
-        except sqlite3.IntegrityError:
-            form_submitted.value = "User Logged In!"
-            form_submitted.color = "green"
-            page.update()
+            if db.authenticate_user(email, password):
+                form_submitted.value = "User Logged In!"
+                form_submitted.color = "green"
+                page.update()
+                page.go("/success")
+            else:
+                form_submitted.value = "Invalid email or password."
+                form_submitted.color = "red"
+                page.update()
+
         except Exception as ex:
             form_submitted.value = f"Database error: {ex}"
             form_submitted.color = "red"
             page.update()
-
-    first_name_field = flet.TextField(
-        label="First Name",
-        text_size=16,
-        border_radius=14,
-        color="black",
-        focused_border_color="#0A85FF",
-        border_width=0.6,
-        border_color="black",
-    )
 
     email_field = flet.TextField(
         label="Email",
@@ -170,16 +160,15 @@ def login_view_content(page):
         flet.Column(
             [
                 flet.Text(
-                    "Sign Up",
+                    "Login",
                     size=24,
                     color="black",
                     weight=flet.FontWeight.W_600,
                 ),
-                first_name_field,
                 email_field,
                 password_field,
                 flet.Button(
-                    "Submit",
+                    "Login",
                     color="white",
                     width=350,
                     height=40,
@@ -199,14 +188,17 @@ def login_view_content(page):
             spacing=20,
         ),
         width=400,
-        height=420,
+        height=350,
         bgcolor="white",
         border_radius=18,
         padding=20,
     )
 
+def admin_view_content(page):
+    pass
+
 def main(page: flet.Page):
-    # db.init_db()
+    db.init_db()
 
     def toggle_theme(e):
         page.theme_mode = (
@@ -292,6 +284,8 @@ def main(page: flet.Page):
 
         if page.route == "/register":
             page.views.append(register_view)
+        elif page.route == "/login":
+            page.views.append(login_view)
         elif page.route == "/success":
             page.views.append(success_view)
 
