@@ -6,7 +6,7 @@ def home(page: Page, params: Params, basket: Basket):
     input_login = TextField(label="input password")
 
     def login_button(e):
-        page.session.set("session_login", input_login)
+        page.session.store.set("session_login", input_login.value)
         page.go("/dashboard")
         page.update()
 

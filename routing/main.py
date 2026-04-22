@@ -14,4 +14,4 @@ def main(page:Page):
     
     page.go("/")
 
-app(main, view=AppView.WEB_BROWSER, port=4040)
+run(main)
