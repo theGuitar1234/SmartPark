@@ -1,14 +1,16 @@
-from lib import ft
+from .lib import ft
 
-from admin import admin_dashboard_view
-from login import login_view_content
-from signup import signup_view_content
+from .admin import admin_dashboard_view
+from .login import login_view_content
+from .signup import signup_view_content
 
-import db
+from .db import *
+from .api_routes import router as api_router
+from fastapi import FastAPI
 
 
 def main(page: ft.Page):
-    db.init_db()
+    init_db()
 
     user_state = {"current_user": None}
     routes = ["/", "/register", "/login"]
@@ -188,4 +190,20 @@ def main(page: ft.Page):
     route_change(None)
 
 
-ft.app(target=main)
+# ft.app(target=main, host="localhost", port=8000, view=ft.AppView.WEB_BROWSER)
+# app = ft.run(main, export_asgi_app=True)
+# app.include_router(api_router)
+
+init_db()
+
+flet_app = ft.run(main, export_asgi_app=True)
+
+app = FastAPI(
+    title="SmartPark API",
+    description="Backend API for the SmartPark Flet application",
+    version="1.0.0",
+)
+
+app.include_router(api_router)
+
+app.mount("/", flet_app)

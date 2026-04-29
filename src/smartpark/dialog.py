@@ -1,4 +1,4 @@
-from lib import ft
+from .lib import ft
 
 
 def show_dialog(page: ft.Page, dialog: ft.AlertDialog):

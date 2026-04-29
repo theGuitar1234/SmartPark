@@ -1,4 +1,9 @@
-from lib import ft
+from .lib import ft
+
+from .api_client import APIError, register_user
+
+from .db import *
+import sqlite3
 
 
 def signup_view_content(page: ft.Page):
@@ -51,49 +56,15 @@ def signup_view_content(page: ft.Page):
             return
 
         try:
-            db.create_user(name, email, password)
+            register_user(name, email, password)
+
             status_text.value = "Registration successful. You can log in now."
             status_text.color = "green"
             page.update()
-            page.go("/login")
-        except sqlite3.IntegrityError:
-            status_text.value = "Email already exists."
-            status_text.color = "red"
-            page.update()
-        except Exception as ex:
-            status_text.value = f"Database error: {ex}"
-            status_text.color = "red"
-            page.update()
 
-    return ft.Container(
-        width=460,
-        bgcolor="white",
-        border_radius=18,
-        padding=30,
-        content=ft.Column(
-            [
-                ft.Text(
-                    "Sign Up",
-                    size=28,
-                    color="black",
-                    weight=ft.FontWeight.W_600,
-                ),
-                first_name_field,
-                email_field,
-                password_field,
-                ft.ElevatedButton(
-                    "Submit",
-                    width=380,
-                    height=46,
-                    bgcolor="#0A85FF",
-                    color="white",
-                    on_click=form_submit_function,
-                ),
-                status_text,
-                ft.TextButton("Back to home", on_click=lambda e: page.go("/")),
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=18,
-            tight=True,
-        ),
-    )
+            page.go("/login")
+
+        except APIError as ex:
+            status_text.value = str(ex)
+            status_text.color = "red"
+            page.update()

@@ -1,4 +1,10 @@
-import flet as ft
+from .lib import ft
+
+from .db import *
+from .dialog import *
+
+from .api_client import APIError, get_dashboard, update_user as api_update_user
+from .dialog import show_dialog, close_dialog
 
 
 def admin_dashboard_view(page: ft.Page, user_state):
@@ -6,6 +12,17 @@ def admin_dashboard_view(page: ft.Page, user_state):
 
     if not user:
         return ft.View(route="/dashboard", controls=[])
+
+    try:
+        dashboard = get_dashboard()
+    except APIError:
+        dashboard = {
+            "total_slots": 0,
+            "occupied": 0,
+            "available": 0,
+            "reserved": 0,
+            "slots": [],
+        }
 
     def logout_user(e):
         user_state["current_user"] = None
@@ -97,22 +114,21 @@ def admin_dashboard_view(page: ft.Page, user_state):
                 return
 
             try:
-                db.update_user(
+                updated_user = api_update_user(
                     user_id=current_user["user_id"],
                     full_name=full_name,
                     email=email,
                     new_password=new_password if new_password else None,
                 )
 
-                user_state["current_user"]["full_name"] = full_name
-                user_state["current_user"]["email"] = email
+                user_state["current_user"] = updated_user
 
-                logout_user(e)
                 close_dialog(page, dialog)
+                page.go("/dashboard")
                 # page.go("/dashboard")
 
-            except sqlite3.IntegrityError:
-                result_text.value = "That email already exists."
+            except APIError as ex:
+                result_text.value = str(ex)
                 result_text.color = "red"
                 page.update()
             except Exception as ex:
@@ -231,7 +247,11 @@ def admin_dashboard_view(page: ft.Page, user_state):
                             content=ft.Column(
                                 [
                                     ft.Text("Total slots", size=14, color="black54"),
-                                    ft.Text("120", size=28, weight=ft.FontWeight.BOLD),
+                                    ft.Text(
+                                        str(dashboard["total_slots"]),
+                                        size=28,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
                                 ],
                                 spacing=6,
                             ),
@@ -245,7 +265,11 @@ def admin_dashboard_view(page: ft.Page, user_state):
                             content=ft.Column(
                                 [
                                     ft.Text("Occupied", size=14, color="black54"),
-                                    ft.Text("76", size=28, weight=ft.FontWeight.BOLD),
+                                    ft.Text(
+                                        str(dashboard["occupied"]),
+                                        size=28,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
                                 ],
                                 spacing=6,
                             ),
@@ -259,7 +283,11 @@ def admin_dashboard_view(page: ft.Page, user_state):
                             content=ft.Column(
                                 [
                                     ft.Text("Available", size=14, color="black54"),
-                                    ft.Text("44", size=28, weight=ft.FontWeight.BOLD),
+                                    ft.Text(
+                                        str(dashboard["available"]),
+                                        size=28,
+                                        weight=ft.FontWeight.BOLD,
+                                    ),
                                 ],
                                 spacing=6,
                             ),
@@ -305,25 +333,12 @@ def admin_dashboard_view(page: ft.Page, user_state):
                         rows=[
                             ft.DataRow(
                                 cells=[
-                                    ft.DataCell(ft.Text("A")),
-                                    ft.DataCell(ft.Text("A-01")),
-                                    ft.DataCell(ft.Text("Occupied")),
+                                    ft.DataCell(ft.Text(slot["zone"])),
+                                    ft.DataCell(ft.Text(slot["slot_number"])),
+                                    ft.DataCell(ft.Text(slot["status"])),
                                 ]
-                            ),
-                            ft.DataRow(
-                                cells=[
-                                    ft.DataCell(ft.Text("A")),
-                                    ft.DataCell(ft.Text("A-02")),
-                                    ft.DataCell(ft.Text("Available")),
-                                ]
-                            ),
-                            ft.DataRow(
-                                cells=[
-                                    ft.DataCell(ft.Text("B")),
-                                    ft.DataCell(ft.Text("B-01")),
-                                    ft.DataCell(ft.Text("Reserved")),
-                                ]
-                            ),
+                            )
+                            for slot in dashboard["slots"]
                         ],
                     ),
                 ),
