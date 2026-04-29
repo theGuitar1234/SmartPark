@@ -1,200 +1,4 @@
 import flet as ft
-import db
-import sqlite3
-
-def show_dialog(page: ft.Page, dialog: ft.AlertDialog):
-    page.show_dialog(dialog)
-
-
-def close_dialog(page: ft.Page, dialog: ft.AlertDialog):
-    page.pop_dialog()
-
-
-def signup_view_content(page: ft.Page):
-    status_text = ft.Text("", size=14, color="red")
-
-    first_name_field = ft.TextField(
-        label="Full Name",
-        width=380,
-        text_size=16,
-        border_radius=14,
-        color="black",
-        focused_border_color="#0A85FF",
-        border_width=0.8,
-        border_color="black",
-    )
-
-    email_field = ft.TextField(
-        label="Email",
-        width=380,
-        text_size=16,
-        border_radius=14,
-        color="black",
-        focused_border_color="#0A85FF",
-        border_width=0.8,
-        border_color="black",
-    )
-
-    password_field = ft.TextField(
-        label="Password",
-        width=380,
-        password=True,
-        can_reveal_password=True,
-        text_size=16,
-        border_radius=14,
-        color="black",
-        focused_border_color="#0A85FF",
-        border_width=0.8,
-        border_color="black",
-    )
-
-    def form_submit_function(e):
-        name = first_name_field.value.strip()
-        email = email_field.value.strip().lower()
-        password = password_field.value
-
-        if not name or not email or not password:
-            status_text.value = "Please fill in all fields."
-            status_text.color = "red"
-            page.update()
-            return
-
-        try:
-            db.create_user(name, email, password)
-            status_text.value = "Registration successful. You can log in now."
-            status_text.color = "green"
-            page.update()
-            page.go("/login")
-        except sqlite3.IntegrityError:
-            status_text.value = "Email already exists."
-            status_text.color = "red"
-            page.update()
-        except Exception as ex:
-            status_text.value = f"Database error: {ex}"
-            status_text.color = "red"
-            page.update()
-
-    return ft.Container(
-        width=460,
-        bgcolor="white",
-        border_radius=18,
-        padding=30,
-        content=ft.Column(
-            [
-                ft.Text(
-                    "Sign Up",
-                    size=28,
-                    color="black",
-                    weight=ft.FontWeight.W_600,
-                ),
-                first_name_field,
-                email_field,
-                password_field,
-                ft.ElevatedButton(
-                    "Submit",
-                    width=380,
-                    height=46,
-                    bgcolor="#0A85FF",
-                    color="white",
-                    on_click=form_submit_function,
-                ),
-                status_text,
-                ft.TextButton("Back to home", on_click=lambda e: page.go("/")),
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=18,
-            tight=True,
-        ),
-    )
-
-
-def login_view_content(page: ft.Page, user_state):
-    status_text = ft.Text("", size=14, color="red")
-
-    email_field = ft.TextField(
-        label="Email",
-        width=380,
-        text_size=16,
-        border_radius=14,
-        color="black",
-        focused_border_color="#0A85FF",
-        border_width=0.8,
-        border_color="black",
-    )
-
-    password_field = ft.TextField(
-        label="Password",
-        width=380,
-        password=True,
-        can_reveal_password=True,
-        text_size=16,
-        border_radius=14,
-        color="black",
-        focused_border_color="#0A85FF",
-        border_width=0.8,
-        border_color="black",
-    )
-
-    def form_submit_function(e):
-        email = email_field.value.strip().lower()
-        password = password_field.value
-
-        if not email or not password:
-            status_text.value = "Please fill in all fields."
-            status_text.color = "red"
-            page.update()
-            return
-
-        try:
-            user = db.authenticate_user(email, password)
-
-            if user:
-                user_state["current_user"] = user
-                status_text.value = "User logged in."
-                status_text.color = "green"
-                page.update()
-                page.go("/dashboard")
-            else:
-                status_text.value = "Invalid email or password."
-                status_text.color = "red"
-                page.update()
-
-        except Exception as ex:
-            status_text.value = f"Database error: {ex}"
-            status_text.color = "red"
-            page.update()
-
-    return ft.Container(
-        width=460,
-        bgcolor="white",
-        border_radius=18,
-        padding=30,
-        content=ft.Column(
-            [
-                ft.Text(
-                    "Login",
-                    size=28,
-                    color="black",
-                    weight=ft.FontWeight.W_600,
-                ),
-                email_field,
-                password_field,
-                ft.ElevatedButton(
-                    "Login",
-                    width=380,
-                    height=46,
-                    bgcolor="#0A85FF",
-                    color="white",
-                    on_click=form_submit_function,
-                ),
-                status_text,
-                ft.TextButton("Back to home", on_click=lambda e: page.go("/")),
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=18,
-            tight=True,
-        ),
-    )
 
 
 def admin_dashboard_view(page: ft.Page, user_state):
@@ -206,7 +10,7 @@ def admin_dashboard_view(page: ft.Page, user_state):
     def logout_user(e):
         user_state["current_user"] = None
         page.go("/")
-    
+
     def show_snack(message):
         page.show_dialog(
             ft.SnackBar(
@@ -223,7 +27,10 @@ def admin_dashboard_view(page: ft.Page, user_state):
                 content=ft.Column(
                     [
                         ft.Text("Quick actions", size=18, weight=ft.FontWeight.W_600),
-                        ft.Button("Show welcome message", on_click=lambda e: show_snack("Welcome back")),
+                        ft.Button(
+                            "Show welcome message",
+                            on_click=lambda e: show_snack("Welcome back"),
+                        ),
                         ft.Button("Close", on_click=lambda e: page.pop_dialog()),
                     ],
                     tight=True,
@@ -256,7 +63,6 @@ def admin_dashboard_view(page: ft.Page, user_state):
 
         result_text = ft.Text("", size=14, color="red")
 
-        
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("Edit User Details"),
@@ -345,7 +151,7 @@ def admin_dashboard_view(page: ft.Page, user_state):
             expand=True,
         ),
     )
-    
+
     menu_bar = ft.MenuBar(
         controls=[
             ft.SubmenuButton(
@@ -462,7 +268,6 @@ def admin_dashboard_view(page: ft.Page, user_state):
                     spacing=15,
                     wrap=True,
                 ),
-
                 ft.Row(
                     [
                         ft.TextButton(
@@ -487,7 +292,6 @@ def admin_dashboard_view(page: ft.Page, user_state):
                     spacing=12,
                     wrap=True,
                 ),
-
                 ft.Container(
                     padding=10,
                     border_radius=16,
@@ -526,7 +330,7 @@ def admin_dashboard_view(page: ft.Page, user_state):
             ],
             spacing=20,
             expand=True,
-        )
+        ),
     )
 
     layout = ft.Row(
@@ -555,181 +359,3 @@ def admin_dashboard_view(page: ft.Page, user_state):
         spacing=0,
         controls=[layout],
     )
-
-def main(page: ft.Page):
-    db.init_db()
-
-    user_state = {"current_user": None}
-    routes = ["/", "/register", "/login"]
-
-    def toggle_theme(e):
-        page.theme_mode = (
-            ft.ThemeMode.DARK
-            if page.theme_mode == ft.ThemeMode.LIGHT
-            else ft.ThemeMode.LIGHT
-        )
-        page.update()
-    
-    def handle_nav_change(e):
-        page.go(routes[e.control.selected_index])
-
-    def route_change(e):
-        if page.route == "/dashboard" and not user_state["current_user"]:
-            page.go("/login")
-            return
-        
-        page.appbar = None
-        page.bottom_appbar = None
-        page.navigation_bar = None
-        
-        if page.route in routes:
-            page.navigation_bar = ft.NavigationBar(
-                selected_index={"/": 0, "/register": 1, "/login": 2}.get(page.route, 0),
-                on_change=handle_nav_change,
-                destinations=[
-                    ft.NavigationBarDestination(icon=ft.Icons.HOME_OUTLINED, label="Home"),
-                    ft.NavigationBarDestination(icon=ft.Icons.PERSON_ADD_ALT_1, label="Register"),
-                    ft.NavigationBarDestination(icon=ft.Icons.LOGIN, label="Login"),
-                ],
-            )
-        
-        if page.route == "/dashboard":
-            page.appbar = ft.AppBar(
-                leading=ft.Icon(ft.Icons.LOCAL_PARKING, color=ft.Colors.WHITE),
-                leading_width=40,
-                title=ft.Text("SmartPark Dashboard"),
-                bgcolor="#0A85FF",
-                actions=[
-                    ft.IconButton(
-                        icon=ft.Icons.DARK_MODE_OUTLINED,
-                        icon_color=ft.Colors.WHITE,
-                        on_click=toggle_theme,
-                    ),
-                    ft.IconButton(
-                        icon=ft.Icons.NOTIFICATIONS_OUTLINED,
-                        icon_color=ft.Colors.WHITE,
-                        on_click=lambda e: page.show_dialog(
-                            ft.SnackBar(content=ft.Text("Notifications clicked"))
-                        ),
-                    ),
-                ],
-            )
-
-            page.bottom_appbar = ft.BottomAppBar(
-                bgcolor="#0A85FF",
-                content=ft.Row(
-                    controls=[
-                        ft.IconButton(
-                            icon=ft.Icons.HOME_OUTLINED,
-                            icon_color=ft.Colors.WHITE,
-                            on_click=lambda e: page.go("/dashboard"),
-                        ),
-                        ft.Container(expand=True),
-                        ft.IconButton(
-                            icon=ft.Icons.LOGOUT,
-                            icon_color=ft.Colors.WHITE,
-                            on_click=lambda e: user_state.update({"current_user": None}) or page.go("/"),
-                        ),
-                    ]
-                ),
-            )
-
-        home_view = ft.View(
-            route="/",
-            vertical_alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[
-                ft.Container(
-                    width=420,
-                    bgcolor="white",
-                    border_radius=18,
-                    padding=30,
-                    content=ft.Column(
-                        [
-                            ft.Text(
-                                "Welcome",
-                                size=30,
-                                weight=ft.FontWeight.W_600,
-                                color="black",
-                            ),
-                            ft.ElevatedButton(
-                                "Create account",
-                                width=300,
-                                on_click=lambda e: page.go("/register"),
-                            ),
-                            ft.ElevatedButton(
-                                "Login",
-                                width=300,
-                                on_click=lambda e: page.go("/login"),
-                            ),
-                            ft.TextButton(
-                                "Toggle theme",
-                                on_click=toggle_theme,
-                            ),
-                        ],
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                        spacing=20,
-                    ),
-                )
-            ],
-        )
-
-        register_view = ft.View(
-            route="/register",
-            vertical_alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[signup_view_content(page)],
-        )
-
-        login_view = ft.View(
-            route="/login",
-            vertical_alignment=ft.MainAxisAlignment.CENTER,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            controls=[login_view_content(page, user_state)],
-        )
-
-        dashboard_view = admin_dashboard_view(page, user_state)
-
-        page.views.clear()
-
-        if page.route == "/":
-            page.views.append(home_view)
-        elif page.route == "/register":
-            page.views.append(home_view)
-            page.views.append(register_view)
-        elif page.route == "/login":
-            page.views.append(home_view)
-            page.views.append(login_view)
-        elif page.route == "/dashboard":
-            page.views.append(dashboard_view)
-        else:
-            page.views.append(home_view)
-
-        page.update()
-
-    def view_pop(e):
-        if len(page.views) > 1:
-            page.views.pop()
-            top_view = page.views[-1]
-            page.go(top_view.route)
-        else:
-            page.go("/")
-
-    page.on_route_change = route_change
-    page.on_view_pop = view_pop
-
-    page.title = "SmartPark"
-    page.theme_mode = ft.ThemeMode.LIGHT
-    page.bgcolor = "#EDEFF2"
-    page.padding = 0
-
-    page.window.width = 1280
-    page.window.height = 820
-    page.window.min_width = 1000
-    page.window.min_height = 700
-
-    # page.go("/")
-    route_change(None)
-
-
-ft.app(target=main)
