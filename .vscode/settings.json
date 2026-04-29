@@ -1,3 +1,10 @@
 {
-    "python-envs.defaultEnvManager": "ms-python.python:system"
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python.analysis.extraPaths": [
+        "./src/main"
+    ],
+    "python.autoComplete.extraPaths": [
+        "./src/main"
+    ],
+    "python.envFile": "${workspaceFolder}/.env"
 }
