@@ -1,4 +1,5 @@
 import sqlite3
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import RedirectResponse
@@ -10,6 +11,8 @@ from .schemas import (
     UpdateUserRequest,
     UserResponse,
     DashboardResponse,
+    ItemRequest,
+    ItemResponse,
 )
 
 router = APIRouter(prefix="/api", tags=["SmartPark API"])
@@ -92,3 +95,45 @@ def update_user(user_id: int, payload: UpdateUserRequest):
 @router.get("/dashboard", response_model=DashboardResponse)
 def get_dashboard():
     return db.get_dashboard_data()
+
+
+@router.get("/items", response_model=list[ItemResponse])
+def get_items(search: Optional[str] = None):
+    return db.get_items(search)
+
+
+@router.post("/items", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
+def create_item(payload: ItemRequest):
+    try:
+        return db.create_item(payload.field1, payload.field2, payload.field3)
+    except ValueError as ex:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(ex),
+        )
+
+
+@router.put("/items/{item_id}", response_model=ItemResponse)
+def update_item(item_id: int, payload: ItemRequest):
+    try:
+        updated = db.update_item(item_id, payload.field1, payload.field2, payload.field3)
+        return updated
+    except ValueError as ex:
+        message = str(ex)
+        status_code = status.HTTP_404_NOT_FOUND if "not found" in message.lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(
+            status_code=status_code,
+            detail=message,
+        )
+
+
+@router.delete("/items/{item_id}")
+def delete_item(item_id: int):
+    try:
+        db.delete_item(item_id)
+        return {"message": "Record deleted", "id": item_id}
+    except ValueError as ex:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(ex),
+        )

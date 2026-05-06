@@ -204,6 +204,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
+#python -m uvicorn smartpark.main:app --reload --port 8000 --app-dir src
 app.include_router(api_router)
 
 app.mount("/", flet_app)

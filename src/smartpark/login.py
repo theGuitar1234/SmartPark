@@ -1,8 +1,7 @@
 from .lib import ft
 
-from .db import *
+from .db import authenticate_user
 
-from .api_client import APIError, login_user
 
 def login_view_content(page: ft.Page, user_state):
     status_text = ft.Text("", size=14, color="red")
@@ -30,7 +29,7 @@ def login_view_content(page: ft.Page, user_state):
         border_width=0.8,
         border_color="black",
     )
-    
+
     def form_submit_function(e):
         email = email_field.value.strip().lower()
         password = password_field.value
@@ -41,17 +40,41 @@ def login_view_content(page: ft.Page, user_state):
             page.update()
             return
 
-        try:
-            user = login_user(email, password)
-
+        user = authenticate_user(email, password)
+        if user:
             user_state["current_user"] = user
             status_text.value = "User logged in."
             status_text.color = "green"
             page.update()
-
             page.go("/dashboard")
-
-        except APIError as ex:
-            status_text.value = str(ex)
+        else:
+            status_text.value = "Invalid email or password."
             status_text.color = "red"
             page.update()
+
+    return ft.Container(
+        width=460,
+        bgcolor="white",
+        border_radius=18,
+        padding=30,
+        content=ft.Column(
+            [
+                ft.Text(
+                    "Login",
+                    size=30,
+                    weight=ft.FontWeight.W_600,
+                    color="black",
+                ),
+                email_field,
+                password_field,
+                ft.ElevatedButton(
+                    "Login",
+                    width=300,
+                    on_click=form_submit_function,
+                ),
+                status_text,
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=20,
+        ),
+    )

@@ -8,12 +8,12 @@ class APIError(Exception):
     pass
 
 
-def request(method: str, path: str, json: dict | None = None):
+def request(method: str, path: str, json: dict | None = None, params: dict | None = None):
     url = f"{API_BASE_URL}{path}"
 
     try:
         with httpx.Client(timeout=10) as client:
-            response = client.request(method, url, json=json)
+            response = client.request(method, url, json=json, params=params)
 
     except httpx.RequestError as ex:
         raise APIError(f"Could not connect to API: {ex}")
@@ -72,3 +72,36 @@ def update_user(
 
 def get_dashboard():
     return request("GET", "/dashboard")
+
+
+def get_items(search: str | None = None):
+    params = {"search": search} if search else None
+    return request("GET", "/items", params=params)
+
+
+def create_item(field1: str, field2: str, field3: str):
+    return request(
+        "POST",
+        "/items",
+        json={
+            "field1": field1,
+            "field2": field2,
+            "field3": field3,
+        },
+    )
+
+
+def update_item(item_id: int, field1: str, field2: str, field3: str):
+    return request(
+        "PUT",
+        f"/items/{item_id}",
+        json={
+            "field1": field1,
+            "field2": field2,
+            "field3": field3,
+        },
+    )
+
+
+def delete_item(item_id: int):
+    return request("DELETE", f"/items/{item_id}")

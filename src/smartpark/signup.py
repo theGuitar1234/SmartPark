@@ -1,8 +1,6 @@
 from .lib import ft
 
-from .api_client import APIError, register_user
-
-from .db import *
+from .db import create_user
 import sqlite3
 
 
@@ -56,15 +54,44 @@ def signup_view_content(page: ft.Page):
             return
 
         try:
-            register_user(name, email, password)
-
+            create_user(name, email, password)
             status_text.value = "Registration successful. You can log in now."
             status_text.color = "green"
             page.update()
-
             page.go("/login")
-
-        except APIError as ex:
+        except sqlite3.IntegrityError:
+            status_text.value = "That email already exists."
+            status_text.color = "red"
+            page.update()
+        except ValueError as ex:
             status_text.value = str(ex)
             status_text.color = "red"
             page.update()
+
+    return ft.Container(
+        width=460,
+        bgcolor="white",
+        border_radius=18,
+        padding=30,
+        content=ft.Column(
+            [
+                ft.Text(
+                    "Create account",
+                    size=30,
+                    weight=ft.FontWeight.W_600,
+                    color="black",
+                ),
+                first_name_field,
+                email_field,
+                password_field,
+                ft.ElevatedButton(
+                    "Create account",
+                    width=300,
+                    on_click=form_submit_function,
+                ),
+                status_text,
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=20,
+        ),
+    )

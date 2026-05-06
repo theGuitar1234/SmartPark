@@ -3,7 +3,14 @@ from .lib import ft
 from .db import *
 from .dialog import *
 
-from .api_client import APIError, get_dashboard, update_user as api_update_user
+from .db import (
+    get_dashboard_data,
+    update_user,
+    get_items,
+    create_item,
+    update_item,
+    delete_item,
+)
 from .dialog import show_dialog, close_dialog
 
 
@@ -14,8 +21,8 @@ def admin_dashboard_view(page: ft.Page, user_state):
         return ft.View(route="/dashboard", controls=[])
 
     try:
-        dashboard = get_dashboard()
-    except APIError:
+        dashboard = get_dashboard_data()
+    except Exception:
         dashboard = {
             "total_slots": 0,
             "occupied": 0,
@@ -28,11 +35,12 @@ def admin_dashboard_view(page: ft.Page, user_state):
         user_state["current_user"] = None
         page.go("/")
 
-    def show_snack(message):
+    def show_snack(message, bgcolor=None):
         page.show_dialog(
             ft.SnackBar(
                 content=ft.Text(message),
                 show_close_icon=True,
+                bgcolor=bgcolor,
             )
         )
 
@@ -56,7 +64,7 @@ def admin_dashboard_view(page: ft.Page, user_state):
         )
         page.show_dialog(sheet)
 
-    def open_edit_dialog(e):
+    def open_edit_profile_dialog(e):
         current_user = user_state["current_user"]
 
         name_field = ft.TextField(
@@ -114,7 +122,7 @@ def admin_dashboard_view(page: ft.Page, user_state):
                 return
 
             try:
-                updated_user = api_update_user(
+                updated_user = update_user(
                     user_id=current_user["user_id"],
                     full_name=full_name,
                     email=email,
@@ -125,12 +133,7 @@ def admin_dashboard_view(page: ft.Page, user_state):
 
                 close_dialog(page, dialog)
                 page.go("/dashboard")
-                # page.go("/dashboard")
 
-            except APIError as ex:
-                result_text.value = str(ex)
-                result_text.color = "red"
-                page.update()
             except Exception as ex:
                 result_text.value = f"Update failed: {ex}"
                 result_text.color = "red"
@@ -142,6 +145,156 @@ def admin_dashboard_view(page: ft.Page, user_state):
         ]
 
         show_dialog(page, dialog)
+
+    search_field = ft.TextField(
+        label="Search by Field1 / Field2",
+        width=320,
+        prefix_icon=ft.Icons.SEARCH,
+        on_change=lambda e: load_table(e.control.value),
+    )
+
+    new_field1 = ft.TextField(label="Field1", width=220)
+    new_field2 = ft.TextField(label="Field2", width=220)
+    new_field3 = ft.TextField(label="Field3", width=220)
+
+    table = ft.DataTable(
+        columns=[
+            ft.DataColumn(ft.Text("ID")),
+            ft.DataColumn(ft.Text("Field1")),
+            ft.DataColumn(ft.Text("Field2")),
+            ft.DataColumn(ft.Text("Field3")),
+            ft.DataColumn(ft.Text("Actions")),
+        ],
+        rows=[],
+    )
+
+    dlg_id = ft.TextField(label="ID", width=300, read_only=True)
+    dlg_field1 = ft.TextField(label="Field1", width=300)
+    dlg_field2 = ft.TextField(label="Field2", width=300)
+    dlg_field3 = ft.TextField(label="Field3", width=300)
+
+    def close_item_dialog(e):
+        close_dialog(page, edit_dialog)
+
+    def save_edit(e):
+        payload = {
+            "id": dlg_id.value,
+            "field1": dlg_field1.value.strip(),
+            "field2": dlg_field2.value.strip(),
+            "field3": dlg_field3.value.strip(),
+        }
+
+        try:
+            update_item(
+                int(dlg_id.value),
+                payload["field1"],
+                payload["field2"],
+                payload["field3"],
+            )
+            close_dialog(page, edit_dialog)
+            show_snack("Record updated!", ft.Colors.GREEN_600)
+            load_table(search_field.value)
+        except Exception as ex:
+            show_snack(str(ex), ft.Colors.RED_600)
+
+    edit_dialog = ft.AlertDialog(
+        modal=True,
+        title=ft.Text("Edit Record"),
+        content=ft.Column(
+            [dlg_id, dlg_field1, dlg_field2, dlg_field3],
+            tight=True,
+        ),
+        actions=[
+            ft.TextButton("Cancel", on_click=close_item_dialog),
+            ft.ElevatedButton(
+                "Save",
+                bgcolor="#1565c0",
+                color=ft.Colors.WHITE,
+                on_click=save_edit,
+            ),
+        ],
+    )
+
+    def open_edit_dialog(row_data: dict):
+        dlg_id.value = str(row_data["id"])
+        dlg_field1.value = row_data["field1"]
+        dlg_field2.value = row_data["field2"]
+        dlg_field3.value = row_data["field3"]
+        show_dialog(page, edit_dialog)
+
+    def create_record(e):
+        try:
+            create_item(
+                new_field1.value.strip(),
+                new_field2.value.strip(),
+                new_field3.value.strip(),
+            )
+            new_field1.value = ""
+            new_field2.value = ""
+            new_field3.value = ""
+            show_snack("Record created!", ft.Colors.GREEN_600)
+            load_table(search_field.value)
+        except Exception as ex:
+            show_snack(str(ex), ft.Colors.RED_600)
+
+    def load_table(search_text: str = ""):
+        try:
+            items = get_items(search_text or None)
+            table.rows.clear()
+
+            for item in items:
+                item_id = item["id"]
+
+                def make_delete(iid):
+                    def on_delete(e):
+                        try:
+                            delete_item(iid)
+                            show_snack(f"Deleted: {iid}", ft.Colors.GREEN_600)
+                            load_table(search_field.value)
+                        except Exception as ex:
+                            show_snack(str(ex), ft.Colors.RED_600)
+
+                    return on_delete
+
+                def make_edit(row_data):
+                    def on_edit(e):
+                        open_edit_dialog(row_data)
+
+                    return on_edit
+
+                table.rows.append(
+                    ft.DataRow(
+                        cells=[
+                            ft.DataCell(ft.Text(str(item["id"]))),
+                            ft.DataCell(ft.Text(item["field1"])),
+                            ft.DataCell(ft.Text(item["field2"])),
+                            ft.DataCell(ft.Text(item["field3"])),
+                            ft.DataCell(
+                                ft.Row(
+                                    [
+                                        ft.IconButton(
+                                            ft.Icons.EDIT,
+                                            tooltip="Edit",
+                                            on_click=make_edit(item),
+                                        ),
+                                        ft.IconButton(
+                                            ft.Icons.DELETE,
+                                            tooltip="Delete",
+                                            icon_color=ft.Colors.RED_400,
+                                            on_click=make_delete(item_id),
+                                        ),
+                                    ]
+                                )
+                            ),
+                        ]
+                    )
+                )
+
+            page.update()
+        except Exception as ex:
+            show_snack(f"Cannot load records: {ex}", ft.Colors.RED_600)
+
+    load_table(search_field.value)
 
     sidebar = ft.Container(
         width=220,
@@ -188,7 +341,7 @@ def admin_dashboard_view(page: ft.Page, user_state):
                 controls=[
                     ft.MenuItemButton(
                         content=ft.Text("Edit profile"),
-                        on_click=open_edit_dialog,
+                        on_click=open_edit_profile_dialog,
                     ),
                     ft.MenuItemButton(
                         content=ft.Text("Logout"),
@@ -219,12 +372,47 @@ def admin_dashboard_view(page: ft.Page, user_state):
                             weight=ft.FontWeight.W_500,
                             color="black",
                         ),
-                        ft.ElevatedButton("Edit Profile", on_click=open_edit_dialog),
+                        ft.ElevatedButton("Edit Profile", on_click=open_edit_profile_dialog),
                     ],
                     spacing=12,
                 ),
             ],
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        ),
+    )
+
+    records_section = ft.Container(
+        padding=16,
+        border_radius=16,
+        bgcolor="#F9FAFB",
+        content=ft.Column(
+            [
+                ft.Text("Lab 10 CRUD Records", size=20, weight=ft.FontWeight.W_600),
+                ft.Text(
+                    "Create, search, edit, and delete SQLite records through the API.",
+                    size=13,
+                    color="black54",
+                ),
+                search_field,
+                ft.Row(
+                    [
+                        new_field1,
+                        new_field2,
+                        new_field3,
+                        ft.ElevatedButton(
+                            "Add Record",
+                            icon=ft.Icons.ADD,
+                            on_click=create_record,
+                        ),
+                    ],
+                    wrap=True,
+                    spacing=10,
+                    run_spacing=10,
+                ),
+                ft.Container(height=8),
+                ft.Row(scroll=ft.ScrollMode.AUTO, controls=[table]),
+            ],
+            spacing=12,
         ),
     )
 
@@ -342,9 +530,12 @@ def admin_dashboard_view(page: ft.Page, user_state):
                         ],
                     ),
                 ),
+                ft.Container(height=12),
+                records_section,
             ],
             spacing=20,
             expand=True,
+            scroll=ft.ScrollMode.AUTO,
         ),
     )
 

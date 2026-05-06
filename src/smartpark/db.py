@@ -67,6 +67,14 @@ def init_db():
                 created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(zone, slot_number)
             );
+
+            CREATE TABLE IF NOT EXISTS items (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                field1      TEXT NOT NULL,
+                field2      TEXT NOT NULL,
+                field3      TEXT NOT NULL,
+                created_at  TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             """)
 
         count = conn.execute("SELECT COUNT(*) AS total FROM parking_slots").fetchone()
@@ -84,6 +92,20 @@ def init_db():
                     ("B", "B-01", "Reserved"),
                     ("B", "B-02", "Occupied"),
                     ("C", "C-01", "Available"),
+                ],
+            )
+
+        item_count = conn.execute("SELECT COUNT(*) AS total FROM items").fetchone()
+        if item_count["total"] == 0:
+            conn.executemany(
+                """
+                INSERT INTO items (field1, field2, field3)
+                VALUES (?, ?, ?)
+                """,
+                [
+                    ("Alpha", "One", "First"),
+                    ("Beta", "Two", "Second"),
+                    ("Gamma", "Three", "Third"),
                 ],
             )
 
@@ -229,3 +251,97 @@ def get_dashboard_data():
         "reserved": stats["reserved"],
         "slots": [dict(slot) for slot in slots],
     }
+
+
+def create_item(field1: str, field2: str, field3: str):
+    field1 = field1.strip()
+    field2 = field2.strip()
+    field3 = field3.strip()
+
+    if not field1 or not field2 or not field3:
+        raise ValueError("All item fields are required.")
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO items (field1, field2, field3)
+            VALUES (?, ?, ?)
+            """,
+            (field1, field2, field3),
+        )
+        item_id = cursor.lastrowid
+
+    return get_item_by_id(item_id)
+
+
+def get_item_by_id(item_id: int):
+    with get_connection() as conn:
+        row = conn.execute(
+            """
+            SELECT id, field1, field2, field3
+            FROM items
+            WHERE id = ?
+            """,
+            (item_id,),
+        ).fetchone()
+
+    if not row:
+        return None
+
+    return dict(row)
+
+
+def get_items(search: str | None = None):
+    with get_connection() as conn:
+        if search:
+            like = f"%{search}%"
+            rows = conn.execute(
+                """
+                SELECT id, field1, field2, field3
+                FROM items
+                WHERE field1 LIKE ? OR field2 LIKE ?
+                ORDER BY id
+                """,
+                (like, like),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT id, field1, field2, field3
+                FROM items
+                ORDER BY id
+                """
+            ).fetchall()
+
+    return [dict(row) for row in rows]
+
+
+def update_item(item_id: int, field1: str, field2: str, field3: str):
+    field1 = field1.strip()
+    field2 = field2.strip()
+    field3 = field3.strip()
+
+    if not field1 or not field2 or not field3:
+        raise ValueError("All item fields are required.")
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE items
+            SET field1 = ?, field2 = ?, field3 = ?
+            WHERE id = ?
+            """,
+            (field1, field2, field3, item_id),
+        )
+
+        if cursor.rowcount == 0:
+            raise ValueError(f"ID '{item_id}' not found.")
+
+    return get_item_by_id(item_id)
+
+
+def delete_item(item_id: int):
+    with get_connection() as conn:
+        cursor = conn.execute("DELETE FROM items WHERE id = ?", (item_id,))
+        if cursor.rowcount == 0:
+            raise ValueError(f"ID '{item_id}' not found.")

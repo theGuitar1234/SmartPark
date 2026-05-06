@@ -37,3 +37,13 @@ class DashboardResponse(BaseModel):
     available: int
     reserved: int
     slots: list[SlotResponse]
+
+
+class ItemRequest(BaseModel):
+    field1: str = Field(..., min_length=1, max_length=200)
+    field2: str = Field(..., min_length=1, max_length=200)
+    field3: str = Field(..., min_length=1, max_length=200)
+
+
+class ItemResponse(ItemRequest):
+    id: int
