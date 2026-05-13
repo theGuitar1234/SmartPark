@@ -47,3 +47,10 @@ class ItemRequest(BaseModel):
 
 class ItemResponse(ItemRequest):
     id: int
+
+
+class ItemPageResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: list[ItemResponse]

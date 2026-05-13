@@ -74,9 +74,24 @@ def get_dashboard():
     return request("GET", "/dashboard")
 
 
-def get_items(search: str | None = None):
-    params = {"search": search} if search else None
-    return request("GET", "/items", params=params)
+def get_items(
+    search: str | None = None,
+    limit: int = 10,
+    offset: int = 0,
+    sort_by: str = "id",
+    order: str = "asc",
+):
+    return request(
+        "GET",
+        "/items",
+        params={
+            "limit": limit,
+            "offset": offset,
+            "search": search or "",
+            "sort_by": sort_by,
+            "order": order,
+        },
+    )
 
 
 def create_item(field1: str, field2: str, field3: str):

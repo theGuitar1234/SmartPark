@@ -11,6 +11,9 @@ DB_PATH = DATA_DIR / "parking.db"
 
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
+ALLOWED_ITEM_SORT_COLUMNS = {"id", "field1", "field2", "field3"}
+ALLOWED_SORT_ORDERS = {"asc", "desc"}
+
 
 def validate_email(email: str) -> bool:
     return bool(EMAIL_PATTERN.match(email))
@@ -120,6 +123,9 @@ def create_user(full_name: str, email: str, password: str):
     if not validate_email(email):
         raise ValueError("Email validation failed.")
 
+    if len(password or "") < 4:
+        raise ValueError("Password must be at least 4 characters long.")
+
     password_hash = hash_password(password)
 
     with get_connection() as conn:
@@ -201,6 +207,9 @@ def update_user(
 
     with get_connection() as conn:
         if new_password:
+            if len(new_password) < 4:
+                raise ValueError("Password must be at least 4 characters long.")
+
             password_hash = hash_password(new_password)
 
             cursor = conn.execute(
@@ -291,30 +300,111 @@ def get_item_by_id(item_id: int):
     return dict(row)
 
 
-def get_items(search: str | None = None):
+def normalize_item_query_params(
+    limit: int = 10,
+    offset: int = 0,
+    search: str | None = None,
+    sort_by: str = "id",
+    order: str = "asc",
+):
+    """Validate and normalize user-controlled list/query parameters."""
+    limit = min(max(int(limit), 1), 100)
+    offset = max(int(offset), 0)
+    search = (search or "").strip()
+    sort_by = sort_by if sort_by in ALLOWED_ITEM_SORT_COLUMNS else "id"
+    order = (order or "asc").lower()
+    order = order if order in ALLOWED_SORT_ORDERS else "asc"
+
+    return limit, offset, search, sort_by, order
+
+
+def get_items_page(
+    limit: int = 10,
+    offset: int = 0,
+    search: str | None = None,
+    sort_by: str = "id",
+    order: str = "asc",
+):
+    limit, offset, search, sort_by, order = normalize_item_query_params(
+        limit=limit,
+        offset=offset,
+        search=search,
+        sort_by=sort_by,
+        order=order,
+    )
+
+    where = ""
+    args: tuple[str, ...] = ()
+
+    if search:
+        like = f"%{search}%"
+        where = "WHERE field1 LIKE ? OR field2 LIKE ? OR field3 LIKE ?"
+        args = (like, like, like)
+
     with get_connection() as conn:
-        if search:
-            like = f"%{search}%"
-            rows = conn.execute(
-                """
-                SELECT id, field1, field2, field3
-                FROM items
-                WHERE field1 LIKE ? OR field2 LIKE ?
-                ORDER BY id
-                """,
-                (like, like),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                """
-                SELECT id, field1, field2, field3
-                FROM items
-                ORDER BY id
-                """
-            ).fetchall()
+        total = conn.execute(
+            f"SELECT COUNT(*) AS total FROM items {where}",
+            args,
+        ).fetchone()["total"]
 
-    return [dict(row) for row in rows]
+        rows = conn.execute(
+            f"""
+            SELECT id, field1, field2, field3
+            FROM items
+            {where}
+            ORDER BY {sort_by} {order.upper()}
+            LIMIT ? OFFSET ?
+            """,
+            args + (limit, offset),
+        ).fetchall()
 
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "items": [dict(row) for row in rows],
+    }
+
+
+def get_items(search: str | None = None):
+    """Backward-compatible helper for callers that still need the full list."""
+    return get_items_page(
+        limit=100,
+        offset=0,
+        search=search,
+        sort_by="id",
+        order="asc",
+    )["items"]
+
+
+def seed_items(target_count: int = 100) -> int:
+    """Seed deterministic demo records until the items table reaches target_count."""
+    if target_count < 1:
+        return 0
+
+    inserted = 0
+    with get_connection() as conn:
+        current_count = conn.execute(
+            "SELECT COUNT(*) AS total FROM items"
+        ).fetchone()["total"]
+
+        if current_count >= target_count:
+            return 0
+
+        rows = []
+        for n in range(current_count + 1, target_count + 1):
+            rows.append((f"Alpha-{n:03}", f"Beta-{n:03}", f"Gamma-{n:03}"))
+
+        conn.executemany(
+            """
+            INSERT INTO items (field1, field2, field3)
+            VALUES (?, ?, ?)
+            """,
+            rows,
+        )
+        inserted = len(rows)
+
+    return inserted
 
 def update_item(item_id: int, field1: str, field2: str, field3: str):
     field1 = field1.strip()

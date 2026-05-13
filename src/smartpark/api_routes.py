@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 
 from . import db
@@ -13,6 +13,7 @@ from .schemas import (
     DashboardResponse,
     ItemRequest,
     ItemResponse,
+    ItemPageResponse,
 )
 
 router = APIRouter(prefix="/api", tags=["SmartPark API"])
@@ -97,9 +98,21 @@ def get_dashboard():
     return db.get_dashboard_data()
 
 
-@router.get("/items", response_model=list[ItemResponse])
-def get_items(search: Optional[str] = None):
-    return db.get_items(search)
+@router.get("/items", response_model=ItemPageResponse)
+def get_items(
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    search: Optional[str] = Query(default=None),
+    sort_by: str = Query(default="id"),
+    order: str = Query(default="asc"),
+):
+    return db.get_items_page(
+        limit=limit,
+        offset=offset,
+        search=search,
+        sort_by=sort_by,
+        order=order,
+    )
 
 
 @router.post("/items", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
