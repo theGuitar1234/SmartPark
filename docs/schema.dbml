@@ -1,0 +1,133 @@
+Table users {
+  user_id text [pk]
+  full_name text [not null]
+  email text [not null, unique]
+  password_hash text [not null]
+  role text [not null]
+  is_active integer [not null]
+  created_at text [not null]
+}
+
+Table auth_tokens {
+  token text [pk]
+  user_id text [not null, ref: > users.user_id]
+  created_at text [not null]
+}
+
+Table parking_lots {
+  lot_id text [pk]
+  name text [not null, unique]
+  address text [not null]
+  description text [not null]
+  created_at text [not null]
+  updated_at text [not null]
+}
+
+Table parking_zones {
+  zone_id text [pk]
+  lot_id text [not null, ref: > parking_lots.lot_id]
+  name text [not null]
+  floor_level integer [not null]
+  zone_type text [not null]
+  priority_score integer [not null]
+  created_at text [not null]
+  updated_at text [not null]
+  indexes { (lot_id, name) [unique] }
+}
+
+Table parking_slots {
+  slot_id text [pk]
+  zone_id text [not null, ref: > parking_zones.zone_id]
+  slot_code text [not null, unique]
+  slot_type text [not null]
+  status text [not null]
+  distance_score integer [not null]
+  priority_score integer [not null]
+  override_reason text
+  created_at text [not null]
+  updated_at text [not null]
+}
+
+Table sensors {
+  sensor_id text [pk]
+  sensor_code text [not null, unique]
+  sensor_type text [not null]
+  slot_id text [unique, ref: > parking_slots.slot_id]
+  is_active integer [not null]
+  last_status text [not null]
+  battery_level integer [not null]
+  last_seen_at text
+  created_at text [not null]
+  updated_at text [not null]
+}
+
+Table vehicles {
+  vehicle_id text [pk]
+  plate_number text [not null, unique]
+  vehicle_type text [not null]
+  owner_name text [not null]
+  created_at text [not null]
+  updated_at text [not null]
+}
+
+Table tariff_plans {
+  tariff_id text [pk]
+  name text [not null, unique]
+  hourly_rate real [not null]
+  grace_minutes integer [not null]
+  daily_max real [not null]
+  vehicle_type text
+  zone_id text [ref: > parking_zones.zone_id]
+  is_active integer [not null]
+  created_at text [not null]
+  updated_at text [not null]
+}
+
+Table parking_sessions {
+  session_id text [pk]
+  vehicle_id text [not null, ref: > vehicles.vehicle_id]
+  slot_id text [not null, ref: > parking_slots.slot_id]
+  tariff_id text [not null, ref: > tariff_plans.tariff_id]
+  tariff_name_snapshot text [not null]
+  hourly_rate_snapshot real [not null]
+  grace_minutes_snapshot integer [not null]
+  daily_max_snapshot real [not null]
+  entry_time text [not null]
+  exit_time text
+  status text [not null]
+  fee_amount real [not null]
+  payment_status text [not null]
+  created_at text [not null]
+  updated_at text [not null]
+}
+
+Table payments {
+  payment_id text [pk]
+  session_id text [not null, unique, ref: > parking_sessions.session_id]
+  paid_amount real [not null]
+  method text [not null]
+  status text [not null]
+  reference_number text [not null, unique]
+  paid_at text
+  created_at text [not null]
+  updated_at text [not null]
+}
+
+Table sensor_events {
+  event_id text [pk]
+  sensor_id text [not null, ref: > sensors.sensor_id]
+  slot_id text [ref: > parking_slots.slot_id]
+  reported_status text [not null]
+  raw_payload text [not null]
+  created_at text [not null]
+}
+
+Table activity_logs {
+  activity_id text [pk]
+  entity_type text [not null]
+  entity_id text [not null]
+  title text [not null]
+  message text [not null]
+  severity text [not null]
+  created_at text [not null]
+}

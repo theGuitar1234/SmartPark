@@ -1,0 +1,136 @@
+erDiagram
+    USERS ||--o{ AUTH_TOKENS : owns
+    PARKING_LOTS ||--o{ PARKING_ZONES : contains
+    PARKING_ZONES ||--o{ PARKING_SLOTS : contains
+    PARKING_SLOTS ||--o| SENSORS : monitored_by
+    SENSORS ||--o{ SENSOR_EVENTS : emits
+    VEHICLES ||--o{ PARKING_SESSIONS : parks_in
+    PARKING_SLOTS ||--o{ PARKING_SESSIONS : used_by
+    TARIFF_PLANS ||--o{ PARKING_SESSIONS : prices
+    PARKING_SESSIONS ||--o| PAYMENTS : settled_by
+    PARKING_ZONES ||--o{ TARIFF_PLANS : may_scope
+    PARKING_SLOTS ||--o{ ACTIVITY_LOGS : records
+    SENSORS ||--o{ ACTIVITY_LOGS : records
+    PARKING_SESSIONS ||--o{ ACTIVITY_LOGS : records
+
+    USERS {
+        text user_id PK
+        text full_name
+        text email UK
+        text password_hash
+        text role
+        integer is_active
+        text created_at
+    }
+    AUTH_TOKENS {
+        text token PK
+        text user_id FK
+        text created_at
+    }
+    PARKING_LOTS {
+        text lot_id PK
+        text name UK
+        text address
+        text description
+        text created_at
+        text updated_at
+    }
+    PARKING_ZONES {
+        text zone_id PK
+        text lot_id FK
+        text name
+        integer floor_level
+        text zone_type
+        integer priority_score
+        text created_at
+        text updated_at
+    }
+    PARKING_SLOTS {
+        text slot_id PK
+        text zone_id FK
+        text slot_code UK
+        text slot_type
+        text status
+        integer distance_score
+        integer priority_score
+        text override_reason
+        text created_at
+        text updated_at
+    }
+    SENSORS {
+        text sensor_id PK
+        text sensor_code UK
+        text sensor_type
+        text slot_id FK_UK
+        integer is_active
+        text last_status
+        integer battery_level
+        text last_seen_at
+        text created_at
+        text updated_at
+    }
+    VEHICLES {
+        text vehicle_id PK
+        text plate_number UK
+        text vehicle_type
+        text owner_name
+        text created_at
+        text updated_at
+    }
+    TARIFF_PLANS {
+        text tariff_id PK
+        text name UK
+        real hourly_rate
+        integer grace_minutes
+        real daily_max
+        text vehicle_type
+        text zone_id FK
+        integer is_active
+        text created_at
+        text updated_at
+    }
+    PARKING_SESSIONS {
+        text session_id PK
+        text vehicle_id FK
+        text slot_id FK
+        text tariff_id FK
+        text tariff_name_snapshot
+        real hourly_rate_snapshot
+        integer grace_minutes_snapshot
+        real daily_max_snapshot
+        text entry_time
+        text exit_time
+        text status
+        real fee_amount
+        text payment_status
+        text created_at
+        text updated_at
+    }
+    PAYMENTS {
+        text payment_id PK
+        text session_id FK_UK
+        real paid_amount
+        text method
+        text status
+        text reference_number UK
+        text paid_at
+        text created_at
+        text updated_at
+    }
+    SENSOR_EVENTS {
+        text event_id PK
+        text sensor_id FK
+        text slot_id FK
+        text reported_status
+        text raw_payload
+        text created_at
+    }
+    ACTIVITY_LOGS {
+        text activity_id PK
+        text entity_type
+        text entity_id
+        text title
+        text message
+        text severity
+        text created_at
+    }
